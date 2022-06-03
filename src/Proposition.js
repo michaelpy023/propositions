@@ -150,6 +150,12 @@ export function isValid(proposition, callback) {
                     getErrorHint(proposition, i));
             }
 
+            if (parenthesesCount > 0 && letterCount > 1) {
+                return callback(false,
+                    getErrorString("A parenthesis has more than one operator"),
+                    getErrorHint(proposition, i));
+            }
+
             if (c === '>') {
                 nextExpectedCharacters.push(['(', '~', 'A']);
             } else if (c === '=') {
