@@ -11,7 +11,7 @@ const MutedTextRow = ({ text }) => (
 );
 
 const OperatorColButton = ({ text, onClick }) => (
-    <Button as={Col} className="mx-1" onClick={onClick}>{text}</Button>
+    <Button as={Col} className="mx-1 my-1" onClick={onClick}>{text}</Button>
 );
 
 const PropositionInput = ({ value, onChange, onOperatorButtonClicked }) => {
@@ -61,8 +61,8 @@ const TruthTableRow = ({ value, isLastRow, isLastColumn }) => {
 };
 
 const TruthTableColumn = ({ name, values, isLastColumn }) => {
-    const rows = values.map((value, i, arr) => 
-        <TruthTableRow key={i} value={value} isLastRow={i === arr.length - 1} isLastColumn={isLastColumn}/>);
+    const rows = values.map((value, i, arr) =>
+        <TruthTableRow key={i} value={value} isLastRow={i === arr.length - 1} isLastColumn={isLastColumn} />);
 
     let className = isLastColumn ? "border-bottom" : "border-bottom border-end";
 
@@ -102,8 +102,8 @@ const TruthTable = ({ proposition, hasError }) => {
     }
 
     const columns = propositionalLetters
-        .map((lett, i) => <TruthTableColumn key={i} name={lett} values={combinationsByColumn[i]} isLastColumn={false}/>)
-        .concat(<TruthTableColumn key={"proposition"} name={proposition} values={values} isLastColumn={true}/>);
+        .map((lett, i) => <TruthTableColumn key={i} name={lett} values={combinationsByColumn[i]} isLastColumn={false} />)
+        .concat(<TruthTableColumn key={"proposition"} name={proposition} values={values} isLastColumn={true} />);
 
     return (
         <>
@@ -136,7 +136,7 @@ const InvalidPropositionError = ({ message, hint, expected }) => {
     </> : null;
 
     const margin = <>
-        <p className="mb-4 mt-0"/>
+        <p className="mb-4 mt-0" />
     </>;
 
     return (
@@ -189,12 +189,12 @@ const App = () => {
         <>
             <Row className="mx-0 my-4">
                 <Col />
-                <Col className="border border-primary rounded" xs="6">
+                <Col className="border border-primary rounded" xs={10} sm={10} lg={6}>
                     <h2 className="text-primary text-center my-3">Truth Table Generator</h2>
-                    <PropositionInput 
+                    <PropositionInput
                         value={input} onChange={handleChange} onOperatorButtonClicked={handleOperatorButtonClicked} />
                     <InvalidPropositionError message={errorMessage} hint={errorHint} expected={errorExpected} />
-                    <TruthTable proposition={proposition} hasError={errorMessage.length > 0}/>
+                    <TruthTable proposition={proposition} hasError={errorMessage.length > 0} />
                 </Col>
                 <Col />
             </Row>
