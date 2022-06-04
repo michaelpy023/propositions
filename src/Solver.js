@@ -1,6 +1,6 @@
 import * as Proposition from "./Proposition";
 
-export function findClosingParenthesesIndex(proposition, startIndex, directionIsLeft) {
+export function findClosingParenthesisIndex(proposition, startIndex, directionIsLeft) {
     let toClose = 0;
 
     for (let i = startIndex; i !== (directionIsLeft ? 0 : proposition.length); i += (directionIsLeft ? -1 : 1)) {
@@ -23,20 +23,121 @@ export function findClosingParenthesesIndex(proposition, startIndex, directionIs
 export function getLeftAndRightSubPropositions(proposition, centerIndex) {
     let result = ["", ""];
 
-    if (proposition.charAt(centerIndex - 1) === ')') {
-        let closingParenthesesIndex = findClosingParenthesesIndex(proposition, centerIndex - 1, true);
+    const charLeft = proposition.charAt(centerIndex - 1);
+    const charRight = proposition.charAt(centerIndex + 1);
+
+    if (charLeft === ')') {
+        let closingParenthesesIndex = findClosingParenthesisIndex(proposition, centerIndex - 1, true);
         result[0] = proposition.substring(closingParenthesesIndex, centerIndex);
+    } else if (Proposition.isPropositionalLetter(charLeft)) {
+        result[0] = charLeft;
     }
 
-    if (proposition.charAt(centerIndex + 1) === '(') {
-        let closingParenthesesIndex = findClosingParenthesesIndex(proposition, centerIndex + 1, false);
+    if (charRight === '(') {
+        let closingParenthesesIndex = findClosingParenthesisIndex(proposition, centerIndex + 1, false);
         result[1] = proposition.substring(centerIndex + 1, closingParenthesesIndex + 1);
+    } else if (Proposition.isPropositionalLetter(charRight)) {
+        result[1] = charRight;
     }
 
     return result;
 }
 
 export function parse(tree, proposition) {
+    if (proposition.length === 1) {
+        tree.value = proposition;
+        return;
+    }
+
+    if (proposition.length === 2) {
+        tree.value = '~';
+        tree.left = {};
+        tree.left.value = proposition.charAt(1);
+        return;
+    }
+
+    if (proposition.charAt(0) === '~') {
+        tree.value = '~';
+        tree.left = {};
+        parse(tree.left, proposition.substring(1));
+        return;
+    }
+
+    function charAt(i) {
+        return proposition.charAt(i);
+    }
+
+    for (let i = 1; i < proposition.length - 1; i++) {
+        let c = charAt(i);
+
+        if (c === '(') {
+            i = findClosingParenthesisIndex(proposition, i, false);
+            continue;
+        }
+
+        if (c === '^' || c === 'v' || c === '>' || c === '=') {
+            const left = charAt(i - 1)
+            const right = charAt(i + 1);
+
+            tree.value = c;
+            tree.left = {};
+            tree.right = {};
+
+            if (left === ')') {
+                const closingIndex = findClosingParenthesisIndex(proposition, i - 1, true);
+
+                if (charAt(closingIndex - 1) == '~') {
+                    tree.left.value = '~';
+                    tree.left.left = {};
+                    const substr = proposition.substring(closingIndex, i);
+                    parse(tree.left.left, substr);
+                } else {
+                    const substr = proposition.substring(closingIndex, i);
+                    parse(tree.left, substr);
+                }
+            } else {
+                // Letra
+                const isNegated = charAt(i - 2) == '~';
+
+                if (isNegated) {
+                    tree.left.value = '~';
+                    tree.left.left = {};
+                    tree.left.left.value = left;
+                } else {
+                    tree.left.value = left;
+                }
+            }
+
+            if (right === '(') {
+                const closingIndex = findClosingParenthesisIndex(proposition, i + 1, false);
+                const substr = proposition.substring(i + 1, closingIndex + 1);
+                parse(tree.right, substr);
+            } else {
+                if (right === '~') {
+                    const afterNegation = charAt(i + 2);
+
+                    if (afterNegation === '(') {
+                        const closingIndex = findClosingParenthesisIndex(proposition, i + 2, false);
+                        const substr = proposition.substring(i + 2, closingIndex + 1);
+                        tree.right.value = '~';
+                        tree.right.left = {};
+                        parse(tree.right.left, substr);
+                    } else {
+                        // Letra
+                        tree.right.value = '~';
+                        tree.right.left = {};
+                        tree.right.left.value = afterNegation;
+                    }
+                } else {
+                    // Letra
+                    tree.right.value = right;
+                }
+            }
+        }
+    }
+}
+
+export function parseold(tree, proposition) {
     let currentDepth = 0;
 
     for (let i = 0; i < proposition.length; i++) {
@@ -45,37 +146,45 @@ export function parse(tree, proposition) {
         if (c === '(') currentDepth++;
         if (c === ')') currentDepth--;
 
+        if (i === 0) {
+            if (c === '~') {
+                tree.left = { parent: tree };
+                tree.right = { parent: tree };
+                tree.value = c;
+                tree = tree.left;
+            } else if (Proposition.isPropositionalLetter(c)) {
+                tree.value = c;
+                return;
+            }
+        }
+
         if (currentDepth !== 1) continue;
 
         if (c === '>' || c === '=' || c === '^' || c === 'v') {
-            tree.left = {};
-            tree.right = {};
+            tree.left = { parent: tree };
+            tree.right = { parent: tree };
             tree.value = c;
 
-            let parentheses = getLeftAndRightSubPropositions(proposition, i);
-
-            if (proposition.charAt(i - 1) === ')') {
-                parse(tree.left, parentheses[0]);
-            } else {
-                if (proposition.charAt(i - 2) === '~') {
-                    tree.left.value = '~';
-                    tree.left.left = {};
-                    tree.left.left.value = proposition.charAt(i - 1);
-                } else {
-                    tree.left.value = proposition.charAt(i - 1);
-                }
+            if (tree.parent !== undefined) {
+                tree.parent.left.sibling = tree.parent.right;
+                tree.parent.right.sibling = tree.parent.sibling ? tree.parent.sibling.left : undefined;
             }
 
-            if (proposition.charAt(i + 1) === '(') {
-                parse(tree.right, parentheses[1]);
+            let subPropositions = getLeftAndRightSubPropositions(proposition, i);
+
+            if (subPropositions[1].length === 1) {
+                tree.right.value = subPropositions[1];
+                tree.right.sibling = tree.sibling ? tree.sibling.left : undefined;
             } else {
-                if (proposition.charAt(i + 1) === '~') {
-                    tree.right.value = '~';
-                    tree.right.left = {};
-                    tree.right.left.value = proposition.charAt(i + 2);
-                } else {
-                    tree.right.value = proposition.charAt(i + 1);
-                }
+                parse(tree.right, subPropositions[1]);
+            }
+
+            // If the proposition is larger than 1, it's not a letter
+            if (subPropositions[0].length === 1) {
+                tree.left.value = subPropositions[0];
+                tree.left.sibling = tree.right;
+            } else {
+                parse(tree.left, subPropositions[0]);
             }
         }
     }
@@ -107,6 +216,43 @@ export function calculate(tree, values) {
         // If 'value' is not one of the previous characters, it has to be a propositional letter
         return values[value];
     }
+}
+
+function getTreeLevel(tree, level, arr) {
+    const nullTree = tree === undefined;
+
+    if (level < 1)
+        return;
+    else if (level == 1)
+        arr.push(nullTree ? '' : tree.value);
+    else if (level > 1) {
+        getTreeLevel(nullTree ? {} : tree.left, level - 1, arr);
+        getTreeLevel(nullTree ? {} : tree.right, level - 1, arr);
+    }
+}
+
+function getTreeHeight(tree, current) {
+    let leftHeight = 0;
+    let rightHeight = 0;
+
+    if (tree.left) leftHeight = getTreeHeight(tree.left, current + 1);
+    if (tree.right) rightHeight = getTreeHeight(tree.right, current + 1);
+
+    return Math.max(current, leftHeight, rightHeight);
+}
+
+// Convierte el arbol en array
+export function treeToArray(tree) {
+    let arr = [];
+    let height = getTreeHeight(tree, 1);
+
+    console.log("Tree height: ", height);
+
+    for (let i = 0; i <= height; i++) {
+        getTreeLevel(tree, i, arr);
+    }
+
+    return arr;
 }
 
 export function getPropositionalLetters(proposition) {

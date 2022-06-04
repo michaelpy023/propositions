@@ -77,15 +77,11 @@ const TruthTableColumn = ({ name, values, isLastColumn }) => {
     );
 };
 
-const TruthTable = ({ proposition, hasError }) => {
+const TruthTable = ({ proposition, hasError, tree }) => {
     if (hasError || proposition.length === 0) return;
 
     const propositionalLetters = Solver.getPropositionalLetters(proposition);
     const combinationsByColumn = Solver.getAllPossibleCombinationsOfBinaryDigits(propositionalLetters.length);
-
-    let tree = {};
-
-    Solver.parse(tree, proposition)
 
     let values = [];
     let rowAmount = Math.pow(2, propositionalLetters.length);
@@ -119,33 +115,53 @@ const TruthTable = ({ proposition, hasError }) => {
     );
 };
 
-const InvalidPropositionError = ({ message, hint, expected }) => {
+const BinaryTree = ({ tree }) => {
+    let arr = Solver.treeToArray(tree);
+    let rows = [];
+    let index = 0;
+    let rowAmount = 0;
+    let sum = 0;
+
+    console.log("Got array: ", arr);
+
+    while (sum < arr.length) {
+        sum += Math.pow(2, rowAmount);
+        rowAmount++;
+    }
+
+    for (let i = 0; i < rowAmount; i++) {
+        let columns = [];
+
+        for (let j = 0; j < Math.pow(2, i); j++) {
+            columns.push(<Col key={j} className="border">
+                <p className='text-center mb-2'>{index < arr.length ? arr[index] : ""}</p>
+            </Col>);
+
+            index++;
+        }
+
+        rows[i] = <Row key={i}>
+            {columns}
+        </Row>;
+    }
+
+    return (
+        <>
+            {rows}
+            <Row className="mb-3"/>
+        </>
+    );
+};
+
+const InvalidPropositionError = ({ message }) => {
     // If there is no error, don't render this component
     if (message.length === 0) return;
-
-    const messageComponent = message ? <>
-        <p className="text-center text-danger mb-0 mt-0">{message}</p>
-    </> : null;
-
-    const hintComponent = hint ? <>
-        <p className="text-center mb-0">{hint}</p>
-    </> : null;
-
-    const expectedComponent = expected ? <>
-        <p className="text-center mb-0">{expected}</p>
-    </> : null;
-
-    const margin = <>
-        <p className="mb-4 mt-0" />
-    </>;
 
     return (
         <>
             <Row>
-                {messageComponent}
-                {hintComponent}
-                {expectedComponent}
-                {margin}
+                <p className="text-center text-danger mb-0 mt-0">{message}</p>;
+                <p className="mb-4 mt-0" />
             </Row>
         </>
     );
@@ -154,35 +170,46 @@ const InvalidPropositionError = ({ message, hint, expected }) => {
 const App = () => {
     const [input, setInput] = useState('');
     const [proposition, setProposition] = useState('');
+    const [tree, setTree] = useState({});
 
     // Error stuff
     const [errorMessage, setErrorMessage] = useState('');
-    const [errorHint, setErrorHint] = useState('');
-    const [errorExpected, setErrorExpected] = useState('');
 
-    const checkInputValidity = (newInputValue) => {
+    const hasError = () => {
+        return errorMessage.length > 0;
+    };
+
+    const checkInputValidity = (newInputValue, callback) => {
         const newProposition = Proposition.simplify(newInputValue);
+        const valid = Proposition.isPropositionValid(newProposition);
 
-        setProposition(newProposition);
+        setErrorMessage(!valid ? '[ERROR] Invalid proposition' : '');
+        callback(valid, newProposition);
+    };
 
-        Proposition.isValid(newProposition, (isValid, error, hint, expected) => {
-            setErrorMessage(error || '');
-            setErrorHint(hint || '');
-            setErrorExpected(expected || '');
+    const update = (newInput) => {
+        setInput(newInput);
+
+        checkInputValidity(newInput, (isValid, newProposition) => {
+            if (isValid) {
+                let tempTree = {};
+                Solver.parse(tempTree, newProposition);
+                setProposition(newProposition);
+                setTree(tempTree);
+            } else {
+                setTree({});
+            }
         });
     };
 
     const handleChange = (event) => {
         event.preventDefault();
-        setInput(event.target.value);
-        // Reset selection
-        checkInputValidity(event.target.value);
+        update(event.target.value);
     };
 
     const handleOperatorButtonClicked = (operator) => () => {
         const newInputValue = input + operator;
-        setInput(newInputValue);
-        checkInputValidity(newInputValue);
+        update(newInputValue);
     };
 
     return (
@@ -193,8 +220,9 @@ const App = () => {
                     <h2 className="text-primary text-center my-3">Truth Table Generator</h2>
                     <PropositionInput
                         value={input} onChange={handleChange} onOperatorButtonClicked={handleOperatorButtonClicked} />
-                    <InvalidPropositionError message={errorMessage} hint={errorHint} expected={errorExpected} />
-                    <TruthTable proposition={proposition} hasError={errorMessage.length > 0} />
+                    <InvalidPropositionError message={errorMessage} />
+                    <TruthTable proposition={proposition} hasError={hasError()} tree={tree}/>
+                    <BinaryTree tree={tree}/>
                 </Col>
                 <Col />
             </Row>
