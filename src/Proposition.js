@@ -32,8 +32,8 @@ export function isPropositionValid(proposition) {
         return proposition.charAt(i);
     }
 
-    function replaceBetween(origin, startIndex, endIndex, insertion) {
-        return origin.substring(0, startIndex) + insertion + origin.substring(endIndex);
+    function replaceBetween(str, startIndex, endIndex, newValue) {
+        return str.substring(0, startIndex) + newValue + str.substring(endIndex);
     }
 
     while (notFinished) {

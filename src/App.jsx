@@ -122,8 +122,6 @@ const BinaryTree = ({ tree }) => {
     let rowAmount = 0;
     let sum = 0;
 
-    console.log("Got array: ", arr);
-
     while (sum < arr.length) {
         sum += Math.pow(2, rowAmount);
         rowAmount++;

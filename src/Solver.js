@@ -20,29 +20,6 @@ export function findClosingParenthesisIndex(proposition, startIndex, directionIs
     return 0;
 }
 
-export function getLeftAndRightSubPropositions(proposition, centerIndex) {
-    let result = ["", ""];
-
-    const charLeft = proposition.charAt(centerIndex - 1);
-    const charRight = proposition.charAt(centerIndex + 1);
-
-    if (charLeft === ')') {
-        let closingParenthesesIndex = findClosingParenthesisIndex(proposition, centerIndex - 1, true);
-        result[0] = proposition.substring(closingParenthesesIndex, centerIndex);
-    } else if (Proposition.isPropositionalLetter(charLeft)) {
-        result[0] = charLeft;
-    }
-
-    if (charRight === '(') {
-        let closingParenthesesIndex = findClosingParenthesisIndex(proposition, centerIndex + 1, false);
-        result[1] = proposition.substring(centerIndex + 1, closingParenthesesIndex + 1);
-    } else if (Proposition.isPropositionalLetter(charRight)) {
-        result[1] = charRight;
-    }
-
-    return result;
-}
-
 export function parse(tree, proposition) {
     if (proposition.length === 1) {
         tree.value = proposition;
@@ -132,59 +109,6 @@ export function parse(tree, proposition) {
                     // Letra
                     tree.right.value = right;
                 }
-            }
-        }
-    }
-}
-
-export function parseold(tree, proposition) {
-    let currentDepth = 0;
-
-    for (let i = 0; i < proposition.length; i++) {
-        let c = proposition.charAt(i);
-
-        if (c === '(') currentDepth++;
-        if (c === ')') currentDepth--;
-
-        if (i === 0) {
-            if (c === '~') {
-                tree.left = { parent: tree };
-                tree.right = { parent: tree };
-                tree.value = c;
-                tree = tree.left;
-            } else if (Proposition.isPropositionalLetter(c)) {
-                tree.value = c;
-                return;
-            }
-        }
-
-        if (currentDepth !== 1) continue;
-
-        if (c === '>' || c === '=' || c === '^' || c === 'v') {
-            tree.left = { parent: tree };
-            tree.right = { parent: tree };
-            tree.value = c;
-
-            if (tree.parent !== undefined) {
-                tree.parent.left.sibling = tree.parent.right;
-                tree.parent.right.sibling = tree.parent.sibling ? tree.parent.sibling.left : undefined;
-            }
-
-            let subPropositions = getLeftAndRightSubPropositions(proposition, i);
-
-            if (subPropositions[1].length === 1) {
-                tree.right.value = subPropositions[1];
-                tree.right.sibling = tree.sibling ? tree.sibling.left : undefined;
-            } else {
-                parse(tree.right, subPropositions[1]);
-            }
-
-            // If the proposition is larger than 1, it's not a letter
-            if (subPropositions[0].length === 1) {
-                tree.left.value = subPropositions[0];
-                tree.left.sibling = tree.right;
-            } else {
-                parse(tree.left, subPropositions[0]);
             }
         }
     }
